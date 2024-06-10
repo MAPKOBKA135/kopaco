@@ -51,7 +51,7 @@ afterEvaluate {
 		}
 		repositories {
 			maven {
-				url = uri("${buildDir}/repos")
+				maven { url "https://jitpack.io"  }
 			}
 		}
 	}

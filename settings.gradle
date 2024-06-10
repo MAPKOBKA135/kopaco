@@ -14,5 +14,5 @@ dependencyResolutionManagement {
 	}
 }
 
-rootProject.name = 'kotatsu-parsers'
+rootProject.name = 'kopaco'
 include 'kotatsu-parsers-ksp'

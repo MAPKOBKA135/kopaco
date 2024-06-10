@@ -49,6 +49,11 @@ afterEvaluate {
 				from components.java
 			}
 		}
+		repositories {
+			maven {
+				url = uri("${buildDir}/repos")
+			}
+		}
 	}
 }
 
@@ -68,5 +73,7 @@ dependencies {
 	testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3'
 	testImplementation 'io.webfolder:quickjs:1.1.0'
 }
+
+
 
 tasks.register('generateTestsReport', ReportGenerateTask)

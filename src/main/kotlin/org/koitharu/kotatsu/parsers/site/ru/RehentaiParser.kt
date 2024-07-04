@@ -27,7 +27,7 @@ private const val STATUS_ONGOING = 1
 private const val STATUS_FINISHED = 0
 private const val TOO_MANY_REQUESTS = 429
 
-@MangaSourceParser("REHENTAI", "Рехентай", "ru")
+@MangaSourceParser("REHENTAI", "Рехентай", "ru", type = ContentType.HENTAI)
 internal class RehentaiParser(
 	context: MangaLoaderContext,
 ) : PagedMangaParser(context, MangaSource.REHENTAI, PAGE_SIZE), MangaParserAuthProvider, Interceptor {

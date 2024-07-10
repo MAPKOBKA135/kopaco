@@ -9,7 +9,7 @@ import org.koitharu.kotatsu.parsers.util.*
 import java.text.SimpleDateFormat
 import java.util.*
 
-@MangaSourceParser("MANGAWORLD", "mangaworld.ac", "it")
+@MangaSourceParser("MANGAWORLD1", "mangaworld.ac", "it")
 internal class MangaWorld(
 	context: MangaLoaderContext,
 ) : PagedMangaParser(context, MangaSource.MANGAWORLD, pageSize = 16) {

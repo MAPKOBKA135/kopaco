@@ -15,6 +15,7 @@ internal class MintMangaParser(
 	companion object {
 
 		val domains = arrayOf(
+			"24.mintmanga.one",
 			"mintmanga.live",
 			"mintmanga.com",
 		)

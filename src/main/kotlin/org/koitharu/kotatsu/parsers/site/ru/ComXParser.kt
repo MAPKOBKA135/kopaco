@@ -4,12 +4,12 @@ import org.koitharu.kotatsu.parsers.*
 import org.koitharu.kotatsu.parsers.config.ConfigKey
 import org.koitharu.kotatsu.parsers.model.*
 import org.koitharu.kotatsu.parsers.util.*
-import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
 @MangaSourceParser("COMX", "Com-X", "ru")
-internal class ComXParser(context: MangaLoaderContext) : PagedMangaParser(context, MangaSource.COMX, 30) {
+internal class ComXParser(context: MangaLoaderContext) :
+	PagedMangaParser(context, MangaSource.COMX, 30) {
 
 	override val configKeyDomain = ConfigKey.Domain("com-x.life")
 
@@ -17,12 +17,12 @@ internal class ComXParser(context: MangaLoaderContext) : PagedMangaParser(contex
 		SortOrder.ALPHABETICAL,
 		SortOrder.RATING,
 		SortOrder.POPULARITY,
-		SortOrder.UPDATED,
+		SortOrder.UPDATED
 	)
 
 	override val availableStates: Set<MangaState> = EnumSet.of(
 		MangaState.ONGOING,
-		MangaState.FINISHED,
+		MangaState.FINISHED
 	)
 
 	override val isMultipleTagsSupported = false
@@ -76,15 +76,9 @@ internal class ComXParser(context: MangaLoaderContext) : PagedMangaParser(contex
 
 		val doc = webClient.httpGet(url).parseHtml()
 		val root = doc.body().selectFirst("div.dle-content") ?: return emptyList()
-		val manga = root.select("div.readed")
-
-		if (manga.isEmpty()) {
-			return emptyList()
-		}
-		return manga.mapNotNull { li ->
+		return root.select("div.readed").mapNotNull { li ->
 			val a = li.selectFirst("a.readed__img")
-			val href = a?.attrAsRelativeUrlOrNull("href")
-				?: return@mapNotNull null
+			val href = a?.attrAsRelativeUrlOrNull("href") ?: return@mapNotNull null
 			val title = li.selectFirst("h3.readed__title")?.text() ?: return@mapNotNull null
 			val views = li.select("ul.readed__info > li")
 			val status = views.firstNotNullOfOrNull { it.ownText().takeIf { x -> x.startsWith("Последний выпуск:") } }
@@ -127,24 +121,7 @@ internal class ComXParser(context: MangaLoaderContext) : PagedMangaParser(contex
 		val chaptersList = root.selectFirst("div.chapter_content")
 			?.selectFirst("ul.chapter_list")?.select("li")?.asReversed()
 		val dateFormat = SimpleDateFormat("MMM dd,yyyy", Locale.US)
-//		val chapters = chaptersList?.mapIndexed { i, li ->
-//			val href = li.selectFirst("a")?.attrAsRelativeUrlOrNull("href")
-//				?: return@mapIndexed null
-//			val name = li.select("span")
-//				.filter { x -> x.className().isEmpty() }
-//				.joinToString(" - ") { it.text() }.trim()
-//			MangaChapter(
-//				id = generateUid(href),
-//				name = name.ifEmpty { "${manga.title} - ${i + 1}" },
-//				number = i + 1f,
-//				volume = 0,
-//				url = href,
-//				scanlator = null,
-//				uploadDate = parseChapterDate(dateFormat, li.selectFirst("span.time")?.text())?.time ?: 0,
-//				branch = null,
-//				source = source,
-//			)
-//		}?.filterNotNull() ?: emptyList() // Если chaptersList null, возвращаем пустой список
+
 		return manga.copy(
 			tags = manga.tags + info?.select("li")?.find { x ->
 				x.selectFirst("b")?.ownText() == "Жанр(ы):"
@@ -183,7 +160,7 @@ internal class ComXParser(context: MangaLoaderContext) : PagedMangaParser(contex
 		val root = doc.body().selectFirstOrThrow("div.page_select")
 		val isManga = root.select("select")
 
-		if (isManga.isEmpty()) {//Webtoon
+		if (isManga.isEmpty()) { // Webtoon
 			val imgElements = doc.select("div#viewer.read_img img.image")
 			return imgElements.map {
 				val href = it.attr("src")
@@ -195,7 +172,7 @@ internal class ComXParser(context: MangaLoaderContext) : PagedMangaParser(contex
 				)
 
 			}
-		} else { //Manga
+		} else { // Manga
 			return isManga.select("option").mapNotNull {
 				val href = it.attrAsRelativeUrlOrNull("value")
 				if (href == null || href.endsWith("featured.html")) {
@@ -212,7 +189,7 @@ internal class ComXParser(context: MangaLoaderContext) : PagedMangaParser(contex
 	}
 
 	override suspend fun getPageUrl(page: MangaPage): String {
-		if (page.url.startsWith("//")) {//Webtoon
+		if (page.url.startsWith("//")) { // Webtoon
 			return page.url.toAbsoluteUrl(domain)
 		}
 
@@ -237,20 +214,12 @@ internal class ComXParser(context: MangaLoaderContext) : PagedMangaParser(contex
 		}
 	}
 
-//	private suspend fun bypassLicensedChapters(manga: Manga): List<MangaChapter> {
-//		val doc = webClient.httpGet(manga.publicUrl.toAbsoluteUrl(domain)).parseHtml()
-//		val root = doc.body().selectFirst("div.panel-body") ?: return emptyList()
-//		val href = root.selectFirst("a")?.attrAsRelativeUrlOrNull("href") ?: return emptyList()
-//		val result = doc.createElement("html")
-//		result.appendChild(root.clone())
-//		return getDetails(manga.copy(publicUrl = href)).chapters // Исправлено на publicUrl
-//	}
-
-	private fun parseChapterDate(dateFormat: DateFormat, dateString: String?): Date? {
+	private fun parseChapterDate(dateFormat: SimpleDateFormat, dateString: String?): Date? {
 		return try {
 			dateString?.let { dateFormat.parse(it) }
 		} catch (e: Exception) {
 			null
-		}
 	}
 }
+}
+

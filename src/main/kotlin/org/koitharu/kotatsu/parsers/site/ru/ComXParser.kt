@@ -40,18 +40,7 @@ internal class ComXParser(context: MangaLoaderContext) : PagedMangaParser(contex
 				}
 
 				is MangaListFilter.Advanced -> {
-					append("/comix-read/")
-					append("0-")
-
-					if (filter.tags.isNotEmpty()) {
-						filter.tags.oneOrThrowIfMany()?.let {
-							append(it.key)
-						}
-					} else {
-						append("0")
-					}
-					append("-0-")
-
+					append("/ComicLis/")
 					if (filter.states.isNotEmpty()) {
 						filter.states.oneOrThrowIfMany()?.let {
 							append(
@@ -63,25 +52,20 @@ internal class ComXParser(context: MangaLoaderContext) : PagedMangaParser(contex
 							)
 						}
 					} else {
-						append("0")
-					}
+						}
 
-					append("-0-0/")
-					append(page.toString())
-					append(".htm")
 
 					append(
 						when (filter.sortOrder) {
 							SortOrder.POPULARITY -> ""
-							SortOrder.UPDATED -> "?last_chapter_time.za"
-							SortOrder.ALPHABETICAL -> "?name.az"
-							SortOrder.RATING -> "?rating.za"
-							else -> "?last_chapter_time.za"
+							SortOrder.UPDATED -> "st=34"
+							SortOrder.RATING -> ""
+							else -> ""
 						},
 					)
 				}
 
-				null -> append("/directory/$page.htm?last_chapter_time.za")
+				null -> append("")
 			}
 		}
 		val doc = webClient.httpGet(url).parseHtml()

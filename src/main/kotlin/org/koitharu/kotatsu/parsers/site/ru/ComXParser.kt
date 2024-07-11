@@ -127,24 +127,24 @@ internal class ComXParser(context: MangaLoaderContext) : PagedMangaParser(contex
 		val chaptersList = root.selectFirst("div.chapter_content")
 			?.selectFirst("ul.chapter_list")?.select("li")?.asReversed()
 		val dateFormat = SimpleDateFormat("MMM dd,yyyy", Locale.US)
-		val chapters = chaptersList?.mapIndexed { i, li ->
-			val href = li.selectFirst("a")?.attrAsRelativeUrlOrNull("href")
-				?: return@mapIndexed null
-			val name = li.select("span")
-				.filter { x -> x.className().isEmpty() }
-				.joinToString(" - ") { it.text() }.trim()
-			MangaChapter(
-				id = generateUid(href),
-				name = name.ifEmpty { "${manga.title} - ${i + 1}" },
-				number = i + 1f,
-				volume = 0,
-				url = href,
-				scanlator = null,
-				uploadDate = parseChapterDate(dateFormat, li.selectFirst("span.time")?.text())?.time ?: 0,
-				branch = null,
-				source = source,
-			)
-		}?.filterNotNull() ?: emptyList() // Если chaptersList null, возвращаем пустой список
+//		val chapters = chaptersList?.mapIndexed { i, li ->
+//			val href = li.selectFirst("a")?.attrAsRelativeUrlOrNull("href")
+//				?: return@mapIndexed null
+//			val name = li.select("span")
+//				.filter { x -> x.className().isEmpty() }
+//				.joinToString(" - ") { it.text() }.trim()
+//			MangaChapter(
+//				id = generateUid(href),
+//				name = name.ifEmpty { "${manga.title} - ${i + 1}" },
+//				number = i + 1f,
+//				volume = 0,
+//				url = href,
+//				scanlator = null,
+//				uploadDate = parseChapterDate(dateFormat, li.selectFirst("span.time")?.text())?.time ?: 0,
+//				branch = null,
+//				source = source,
+//			)
+//		}?.filterNotNull() ?: emptyList() // Если chaptersList null, возвращаем пустой список
 		return manga.copy(
 			tags = manga.tags + info?.select("li")?.find { x ->
 				x.selectFirst("b")?.ownText() == "Жанр(ы):"
@@ -156,7 +156,24 @@ internal class ComXParser(context: MangaLoaderContext) : PagedMangaParser(contex
 				)
 			}.orEmpty(),
 			description = info?.getElementById("show")?.ownText(),
-			chapters = chapters
+			chapters = chaptersList?.mapIndexed { i, li ->
+				val href = li.selectFirst("a")?.attrAsRelativeUrlOrNull("href")
+					?: return@mapIndexed null
+				val name = li.select("span")
+					.filter { x -> x.className().isEmpty() }
+					.joinToString(" - ") { it.text() }.trim()
+				MangaChapter(
+					id = generateUid(href),
+					name = name.ifEmpty { "${manga.title} - ${i + 1}" },
+					number = i + 1f,
+					volume = 0,
+					url = href,
+					scanlator = null,
+					uploadDate = parseChapterDate(dateFormat, li.selectFirst("span.time")?.text())?.time ?: 0,
+					branch = null,
+					source = source,
+				)
+			}?.filterNotNull() ?: emptyList()
 		)
 	}
 

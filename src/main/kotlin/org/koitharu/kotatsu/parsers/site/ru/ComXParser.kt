@@ -220,14 +220,14 @@ internal class ComXParser(context: MangaLoaderContext) : PagedMangaParser(contex
 		}
 	}
 
-	private suspend fun bypassLicensedChapters(manga: Manga): List<MangaChapter>? {
-		val doc = webClient.httpGet(manga.publicUrl.toAbsoluteUrl(domain)).parseHtml()
-		val root = doc.body().selectFirst("div.panel-body") ?: return emptyList()
-		val href = root.selectFirst("a")?.attrAsRelativeUrlOrNull("href") ?: return emptyList()
-		val result = doc.createElement("html")
-		result.appendChild(root.clone())
-		return getDetails(manga.copy(publicUrl = href)).chapters // Исправлено на publicUrl
-	}
+//	private suspend fun bypassLicensedChapters(manga: Manga): List<MangaChapter> {
+//		val doc = webClient.httpGet(manga.publicUrl.toAbsoluteUrl(domain)).parseHtml()
+//		val root = doc.body().selectFirst("div.panel-body") ?: return emptyList()
+//		val href = root.selectFirst("a")?.attrAsRelativeUrlOrNull("href") ?: return emptyList()
+//		val result = doc.createElement("html")
+//		result.appendChild(root.clone())
+//		return getDetails(manga.copy(publicUrl = href)).chapters // Исправлено на publicUrl
+//	}
 
 	private fun parseChapterDate(dateFormat: DateFormat, dateString: String?): Date? {
 		return try {

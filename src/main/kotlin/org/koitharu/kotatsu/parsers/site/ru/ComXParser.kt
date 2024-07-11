@@ -40,7 +40,7 @@ internal class ComXParser(context: MangaLoaderContext) : PagedMangaParser(contex
 				}
 
 				is MangaListFilter.Advanced -> {
-					append("/ComicLis/")
+					append("/ComicList/")
 					if (filter.states.isNotEmpty()) {
 						filter.states.oneOrThrowIfMany()?.let {
 							append(
@@ -52,45 +52,52 @@ internal class ComXParser(context: MangaLoaderContext) : PagedMangaParser(contex
 							)
 						}
 					} else {
-						}
-
+						append("st=34/")
+					}
 
 					append(
 						when (filter.sortOrder) {
-							SortOrder.POPULARITY -> ""
-							SortOrder.UPDATED -> "st=34"
-							SortOrder.RATING -> ""
+							SortOrder.POPULARITY -> "popular/"
+							SortOrder.UPDATED -> "updated/"
+							SortOrder.RATING -> "rating/"
 							else -> ""
 						},
 					)
+					append("page/")
+					append(page.toString())
 				}
 
-				null -> append("")
+				null -> {
+					append("/ComicList/page/")
+					append(page.toString())
+				}
 			}
 		}
+
 		val doc = webClient.httpGet(url).parseHtml()
-		val root = doc.body().selectFirst("ul.manga_pic_list") ?: return emptyList()
-		val manga = root.select("li")
+		val root = doc.body().selectFirst("div.dle-content") ?: return emptyList()
+		val manga = root.select("div.readed")
 
 		if (manga.isEmpty()) {
 			return emptyList()
 		}
 		return manga.mapNotNull { li ->
-			val a = li.selectFirst("a.manga_cover")
+			val a = li.selectFirst("a.readed__img")
 			val href = a?.attrAsRelativeUrlOrNull("href")
 				?: return@mapNotNull null
-			val views = li.select("p.view")
-			val status = views.firstNotNullOfOrNull { it.ownText().takeIf { x -> x.startsWith("Status:") } }
+			val title = li.selectFirst("h3.readed__title")?.text() ?: return@mapNotNull null
+			val views = li.select("ul.readed__info > li")
+			val status = views.firstNotNullOfOrNull { it.ownText().takeIf { x -> x.startsWith("Последний выпуск:") } }
 				?.substringAfter(':')?.trim()?.lowercase(Locale.ROOT)
 			Manga(
 				id = generateUid(href),
-				title = a.attr("title"),
+				title = title,
 				coverUrl = a.selectFirst("img")?.absUrl("src").orEmpty(),
 				source = source,
 				altTitle = null,
 				rating = li.selectFirst("p.score")?.selectFirst("b")
 					?.ownText()?.toFloatOrNull()?.div(5f) ?: RATING_UNKNOWN,
-				author = views.firstNotNullOfOrNull { it.text().takeIf { x -> x.startsWith("Author:") } }
+				author = views.firstNotNullOfOrNull { it.text().takeIf { x -> x.startsWith("Автор:") } }
 					?.substringAfter(':')
 					?.trim(),
 				state = when (status) {
@@ -98,10 +105,10 @@ internal class ComXParser(context: MangaLoaderContext) : PagedMangaParser(contex
 					"completed" -> MangaState.FINISHED
 					else -> null
 				},
-				tags = li.selectFirst("p.keyWord")?.select("a")?.mapNotNullToSet tags@{ x ->
+				tags = li.selectFirst("span.genres")?.select("a")?.mapNotNullToSet tags@{ x ->
 					MangaTag(
-						title = x.attr("title").toTitleCase(),
-						key = x.attr("href").substringAfter("/directory/0-").substringBefore("-0-"),
+						title = x.text(),
+						key = x.attr("href").substringAfter("/genre/"),
 						source = source,
 					)
 				}.orEmpty(),
@@ -120,38 +127,36 @@ internal class ComXParser(context: MangaLoaderContext) : PagedMangaParser(contex
 		val chaptersList = root.selectFirst("div.chapter_content")
 			?.selectFirst("ul.chapter_list")?.select("li")?.asReversed()
 		val dateFormat = SimpleDateFormat("MMM dd,yyyy", Locale.US)
+		val chapters = chaptersList?.mapIndexed { i, li ->
+			val href = li.selectFirst("a")?.attrAsRelativeUrlOrNull("href")
+				?: return@mapIndexed null
+			val name = li.select("span")
+				.filter { x -> x.className().isEmpty() }
+				.joinToString(" - ") { it.text() }.trim()
+			MangaChapter(
+				id = generateUid(href),
+				name = name.ifEmpty { "${manga.title} - ${i + 1}" },
+				number = i + 1f,
+				volume = 0,
+				url = href,
+				scanlator = null,
+				uploadDate = parseChapterDate(dateFormat, li.selectFirst("span.time")?.text())?.time ?: 0,
+				branch = null,
+				source = source,
+			)
+		}?.filterNotNull() ?: emptyList() // Если chaptersList null, возвращаем пустой список
 		return manga.copy(
 			tags = manga.tags + info?.select("li")?.find { x ->
-				x.selectFirst("b")?.ownText() == "Genre(s):"
+				x.selectFirst("b")?.ownText() == "Жанр(ы):"
 			}?.select("a")?.mapNotNull { a ->
 				MangaTag(
-					title = a.attr("title").toTitleCase(),
-					key = a.attr("href").substringAfter("/directory/0-").substringBefore("-0-"),
+					title = a.text(),
+					key = a.attr("href").substringAfter("/genre/"),
 					source = source,
 				)
 			}.orEmpty(),
 			description = info?.getElementById("show")?.ownText(),
-			chapters = chaptersList?.mapChapters { i, li ->
-				val href = li.selectFirst("a")?.attrAsRelativeUrlOrNull("href")
-					?: return@mapChapters null
-				val name = li.select("span")
-					.filter { x -> x.className().isEmpty() }
-					.joinToString(" - ") { it.text() }.trim()
-				MangaChapter(
-					id = generateUid(href),
-					url = href,
-					source = source,
-					number = i + 1f,
-					volume = 0,
-					uploadDate = parseChapterDate(
-						dateFormat,
-						li.selectFirst("span.time")?.text(),
-					),
-					name = name.ifEmpty { "${manga.title} - ${i + 1}" },
-					scanlator = null,
-					branch = null,
-				)
-			} ?: bypassLicensedChapters(manga),
+			chapters = chapters
 		)
 	}
 
@@ -210,44 +215,25 @@ internal class ComXParser(context: MangaLoaderContext) : PagedMangaParser(contex
 			MangaTag(
 				source = source,
 				key = key,
-				title = a.text().toTitleCase(),
+				title = a.text(),
 			)
 		}
 	}
 
-	private fun parseChapterDate(dateFormat: DateFormat, date: String?): Long {
-		return when {
-			date.isNullOrEmpty() -> 0L
-			date.contains("Today") -> Calendar.getInstance().timeInMillis
-			date.contains("Yesterday") -> Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, -1) }.timeInMillis
-			else -> dateFormat.tryParse(date)
-		}
+	private suspend fun bypassLicensedChapters(manga: Manga): List<MangaChapter>? {
+		val doc = webClient.httpGet(manga.publicUrl.toAbsoluteUrl(domain)).parseHtml()
+		val root = doc.body().selectFirst("div.panel-body") ?: return emptyList()
+		val href = root.selectFirst("a")?.attrAsRelativeUrlOrNull("href") ?: return emptyList()
+		val result = doc.createElement("html")
+		result.appendChild(root.clone())
+		return getDetails(manga.copy(publicUrl = href)).chapters // Исправлено на publicUrl
 	}
 
-	private suspend fun bypassLicensedChapters(manga: Manga): List<MangaChapter> {
-		val doc = webClient.httpGet(manga.url.toAbsoluteUrl(getDomain("m"))).parseHtml()
-		val list = doc.body().selectFirst("ul.detail-ch-list") ?: return emptyList()
-		val dateFormat = SimpleDateFormat("MMM dd,yyyy", Locale.US)
-		return list.select("li").asReversed().mapIndexedNotNull { i, li ->
-			val a = li.selectFirst("a") ?: return@mapIndexedNotNull null
-			val href = a.attrAsRelativeUrl("href")
-			val name = a.selectFirst("span.vol")?.text().orEmpty().ifEmpty {
-				a.ownText()
-			}
-			MangaChapter(
-				id = generateUid(href),
-				url = href,
-				source = source,
-				number = i + 1f,
-				volume = 0,
-				uploadDate = parseChapterDate(
-					dateFormat,
-					li.selectFirst("span.time")?.text(),
-				),
-				name = name.ifEmpty { "${manga.title} - ${i + 1}" },
-				scanlator = null,
-				branch = null,
-			)
+	private fun parseChapterDate(dateFormat: DateFormat, dateString: String?): Date? {
+		return try {
+			dateString?.let { dateFormat.parse(it) }
+		} catch (e: Exception) {
+			null
 		}
 	}
 }
